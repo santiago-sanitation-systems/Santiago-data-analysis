@@ -11,17 +11,44 @@ library(reshape2)
 library(doBy)
 library(randomcoloR)
 library(ggrepel)
-library(patchwork) # to add plots together
+
 
 ## Load Props.RData file and TAS files calculated with "Santiago-Data-Prep.R"
-props <- readRDS(file.path(rundir, paste(runname, "props.Rdata", sep = "_")))
-tas_components_df <- readRDS(file=(file.path(rundir, paste(runname, "tas_props.Rdata", sep = "_"))))
-tas_components_df_long <- readRDS(file=(file.path(rundir, paste(runname, "tas_long_props.Rdata", sep = "_"))))
+# Get the names of all files ending with tas_props.Rdata in the directory
+file_names <- list.files(rundir, pattern = "prop.Rdata$", full.names = TRUE)
+# Initialize an empty data frame to store the combined data
+props <- data.frame()
+# Loop through the file names and read them into data frames, then combine them using rbind()
+for (i in seq_along(file_names)) {
+  df <- readRDS(file_names[i])
+  props <- rbind(props, df)
+}
+
+# Get the names of all files ending with tas_props.Rdata in the directory
+file_names <- list.files(rundir, pattern = "tas_props.Rdata$", full.names = TRUE)
+# Initialize an empty data frame to store the combined data
+tas_components_df <- data.frame()
+# Loop through the file names and read them into data frames, then combine them using rbind()
+for (i in seq_along(file_names)) {
+  df <- readRDS(file_names[i])
+  tas_components_df <- rbind(tas_components_df, df)
+}
+
+# Get the names of all files ending with tas_long_props.Rdata in the directory
+file_names <- list.files(rundir, pattern = "tas_long_props.Rdata$", full.names = TRUE)
+# Initialize an empty data frame to store the combined data
+tas_components_df_long <- data.frame()
+# Loop through the file names and read them into data frames, then combine them using rbind()
+for (i in seq_along(file_names)) {
+  df <- readRDS(file_names[i])
+  tas_components_df_long <- rbind(tas_components_df_long, df)
+}
+
 
 ## Create an output folder for plots and save corresponding directory as variable
-dir.create(file.path(rundir, "Santiago-R-Plots"), showWarnings = FALSE)
-plotdir=(file.path(rundir,"Santiago-R-Plots"))
-
+dir.create(file.path(rundir,"/Santiago-R-Plots"), showWarnings = FALSE)
+plotdir=(file.path(rundir,"/Santiago-R-Plots"))
+rundir<-file.path("../Santiago-runfolder/output", runname)
 ##################################################################
 # # # colours and names
 
@@ -36,16 +63,15 @@ source_labs=levels(props$source)
 source_names=levels(props$source)
 
 ## define template colors with randomly assigned colors
-template_cols <- levels(props$template)
-for (i in 1:length(template_cols)) {
-    template_cols[i]<-randomColor()
-}
-remove(i)
+#template_cols <- levels(props$template)
+#for (i in 1:length(template_cols)) {
+#    template_cols[i]<-randomColor()
+#}
+#remove(i)
 
 # define template names
 template_names=levels(props$template)
 template_names_short=str_sort(unique(props$template_nb), numeric = TRUE)
-
 
 ## define functional group colour manually
 fgcol=c(U="#BF0D0D", S="#F29100", C="#FFD400", T="#76B742", D="#00AECA")

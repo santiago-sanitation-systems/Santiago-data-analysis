@@ -5,7 +5,7 @@ rm(list=ls())
 sourcedir=dirname(rstudioapi::getSourceEditorContext()$path)
 setwd=sourcedir
 ## Insert the runname you used for Santiago
-runname = "test"
+runname = "bestpractice_example"
 ### define the path to your output folder from this run
 rundir<-file.path("../Santiago-runfolder/output", runname)
 ## Run the helpers script. It defines important variables and also loads the prepared data from the _Prep_ script.
@@ -86,18 +86,19 @@ tas_components_df$FG <- factor(tas_components_df$FG, levels=c('U','S','C','T','D
 
 p1.2 <- ggplot(tas_components_df, aes(x=tech,y=TAS) )+
   geom_point(size=2, aes(colour=FG), alpha=0.8, stroke=0.5) +
-  scale_shape_manual(values=c(2, 0, 1))+#,fill=fgcol) +
+  scale_color_manual(values=fgcol)+
+  scale_shape_manual(values=c(2, 0, 1))+
   theme_minimal() +
-  guides(colour = guide_legend(title="Functional group", order=1, ncol=1))+
+  guides(colour = guide_legend(title="Functional group", order=1, ncol=5))+
   theme(#text=element_text(family="Arial"),
     panel.grid =   element_line(colour = "#C5C5C4", size=0.25),
     plot.title = element_text(size = 10, colour = "#1D1D1B", face = "bold"),
     axis.title.x=element_text(size=8.5, colour = "#6F6F6E"),
     axis.title.y=element_text(size=8.5, colour = "#6F6F6E"),
-    axis.text.x = element_text(size=8.5, colour = "#6F6F6E",  angle = 80, hjust = 1),
+    axis.text.x = element_text(size=7.5, colour = "#6F6F6E",  angle = 80, hjust = 1),
     axis.text.y = element_text(size=8.5, colour = "#6F6F6E"),
     strip.text = element_text(size=8.5, face="bold"),
-    legend.position= "right",       
+    legend.position= "top",       
     legend.title = element_text(size = 9, colour = "#1D1D1B", face = "bold"),
     legend.text=element_text(size=8.5, colour="#6F6F6E"),
     legend.key.size = unit(1,"line"))+
@@ -111,7 +112,7 @@ ggsave(file.path(plotdir, "p1_2_allTAS.png"), p1.2, unit="cm", width=19, height 
 
 ## ---- p1.3 --> TAS - Detailed appropraiteness profiles for all technologies ----
 
-xtxt1.3 <- expression(paste("Technology Appropriateness Score ", italic("TAS"), " (first box), followed by Attribute Appropriateness Scores"))
+xtxt1.3 <- expression(paste("Attribute Appropriateness Scores followed by Technology Appropriateness Score ", italic("(TAS)")))
 ytxt1.3 <- expression(paste("score"))
 
 p1.3 <- ggplot(tas_components_df_long, aes(x=variable, y=value, fill=tech)) +
@@ -139,9 +140,105 @@ p1.3 <- ggplot(tas_components_df_long, aes(x=variable, y=value, fill=tech)) +
 p1.3
 
 ## save for screen view and ppt
-ggsave(file.path(plotdir, "p1_3_alltechappprofiles.png"), p1.3, unit="cm", width=25, height = 30, dpi=1000, device="png")
+ggsave(file.path(plotdir, "p1_3_alltechappprofiles.png"), p1.3, unit="cm", width=25, height = 40, dpi=1000, device="png")
 ## save high res for print
-#ggsave(file.path(plotdir, "p1_3_alltechappprofiles.pdf"), p1.3, unit="cm", width=25, height = 30, dpi=1000, device="pdf")
+#ggsave(file.path(plotdir, "p1_3_alltechappprofiles.pdf"), p1.3, unit="cm", width=25, height = 40, dpi=1000, device="pdf")
+
+
+## ---- p1.4 --> Comparison of selected system (overview's profiles) ----
+
+xtxt1.4 <- expression(paste("Decision table for preselected sanitation system"))
+ytxt1.4 <- expression(paste("score"))
+
+
+# Create grouped barplot for Resource recovery potential
+# Create a data frame with the required columns
+df <- data.frame(props_selected[,c("ID","recovery_ratio_nitrogen_mean", "recovery_ratio_phosphor_mean", "recovery_ratio_totalsolids_mean", "recovery_ratio_water_mean")])
+#create a dataframe with standard deviations
+sf <- data.frame(props_selected[,c("ID", "recovery_ratio_nitrogen_sd", "recovery_ratio_phosphor_sd", "recovery_ratio_totalsolids_sd", "recovery_ratio_water_sd")])
+# Melt the data into long format
+df.m <- melt(df, id.vars = "ID")
+sf.m <- melt(sf,id.vars = "ID") #must check if it gives correct std values :in order by default or must we join them somehow
+# Create name for the facet
+my_labeller <- function(labels) {return("Resource recovery potential")}
+
+# Plot the data using ggplot2
+  p1.4rr <- ggplot(df.m,
+        aes(x = value, y = variable, fill = variable)) +
+        geom_col( position = "dodge", show.legend = FALSE) +
+        geom_text(aes(label = sprintf("%.f%% \u00B1 %.f%%", value*100, sf.m$value*100 )), hjust = -.05)+
+        scale_x_continuous(labels = scales::percent_format(), lim = c(0, 1.2))+
+        scale_y_discrete(labels = c("N","P","TSS","H2O"))+ #works if its always the same 4
+        facet_wrap(~ ID, ncol=dim(props_selected)[1], labeller = my_labeller)+ #added dim(props_selected)[1] instead of 8
+        #facet_grid(rows = vars(template), cols = vars(source)) +
+        #labs(title = "Resource Recovery Potential ") +
+        #scale_fill_discrete(name = "Variable") +
+        theme(strip.background = element_rect(fill = "grey85", colour = "grey20"),
+          panel.grid = element_line(colour = "grey92"), 
+          panel.border     = element_rect(fill = NA, colour = "grey20"),
+          axis.title.x = element_blank(),
+          axis.title.y = element_blank(),
+          axis.text.x = element_blank(),
+          axis.ticks.x = element_blank(),
+          panel.background = element_rect(fill = "white",colour = NA) )
+p1.4rr
+
+
+#create df with only the SAS and melt it into long format
+df2 <- data.frame(props_selected[,c("ID","sysappscore")])
+df2.m <- melt(df2,id.vars = "ID")
+# Create name for the facet
+my_labeller2 <- function(labels) {return("System Appropriateness Score")}
+
+# Create grouped barplot SAS
+p1.4SAS <- ggplot(df2.m,
+        aes(x = value, y = variable, fill = variable)) +
+        geom_bar(stat = "identity", position = "dodge")+
+        geom_text(aes(label = sprintf("%.f%%", signif(value)* 100)), hjust = -.05)+
+        scale_x_continuous(labels = scales::percent_format(), lim = c(0, 1.2))+
+        facet_wrap(~ ID, ncol=dim(props_selected)[1], labeller = my_labeller2)+
+        scale_fill_discrete(guide="none")+
+        theme(strip.background = element_rect(fill = "grey85", colour = "grey20"),
+              #strip.text = element_blank(),
+              panel.grid = element_line(colour = "grey92"), 
+              panel.border     = element_rect(fill = NA, colour = "grey20"),
+              axis.title.x = element_blank(),
+              axis.title.y = element_blank(),
+              axis.text.x = element_blank(),
+              axis.text.y = element_blank(),
+              axis.ticks.x = element_blank(),
+              axis.ticks.y = element_blank(),
+              panel.background = element_rect(fill = "white",colour = NA)
+              )
+p1.4SAS
+
+#Put the system as header
+df3 <- data.frame(props_selected[,c("ID","template")])
+df3.m <- melt(df3,id.vars = "ID")
+p1.4text <- ggplot(df3.m,
+                  aes(x = 0, y = variable)) +
+                  geom_text(aes(label = value), hjust = "center",vjust = "center")+
+                  scale_fill_discrete(guide="none")+
+                  facet_wrap(~ ID, ncol=dim(props_selected)[1]) +
+                  theme(strip.background =element_rect(fill = "grey85", colour = "grey20"),
+                        panel.grid = element_blank(), 
+                        panel.border     = element_rect(fill = NA, colour = "grey20"),
+                        axis.title.x = element_blank(),
+                        axis.title.y = element_blank(),
+                        axis.ticks.y = element_blank(),
+                        axis.text.y = element_blank(),
+                        axis.text.x = element_blank(),
+                        axis.ticks.x = element_blank(),
+                        panel.background = element_rect(fill = "white",colour = NA)
+                  )                
+p1.4text
+#add the graphics together in one figure
+p1.4 <- p1.4text + p1.4SAS + p1.4rr + plot_layout(ncol = 1, heights = c(1,1,4))
+p1.4
+## save the plot in your dedicated folder
+ggsave(file.path(plotdir, "p1_4_SAS_RR.png"), p1.4, unit="cm", width=70, height = 20, dpi=300, device="png")
+## save high res for print
+#ggsave(file.path(plotdir, "p1_4_SAS_RR.png"), p1.4, unit="cm", width=70, height = 20, dpi=1000, device="pdf")
 
 
 ##########################################################################

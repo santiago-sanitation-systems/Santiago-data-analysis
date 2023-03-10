@@ -13,14 +13,26 @@ sourcedir=dirname(rstudioapi::getSourceEditorContext()$path)
 setwd=sourcedir
 
 ## Insert the runname you used for Santiago
-runname = "test"
+runname = "bestpractice_example"
+
+## Set TRUE if you are applying Santiago in different sector of the same city (zones)
+analysisperzone = FALSE
+## insert the name of the zone (ignore it if you are not conducting an analysis per zone)
+zonename= "A"
+## chose a name for a new folder in your output folder where all data and plot will be saved
+## don't change this name for different zones of the same city
+folder_zone="bestpractice_example_ZoneAnalysis"
+
 ### define the path to your output folder from this run
 rundir<-file.path("../Santiago-runfolder/output", runname)
+## create a directory for analysis per zone
+dir.create(file.path("../Santiago-runfolder/output", paste(runname,"analysis_per_zone", sep = "_")), showWarnings = FALSE)
+zonedir=(file.path("../Santiago-runfolder/output", paste(folder_zone)))
 
 ## read data 
   ## read in allSys
   props <- read.csv(file.path(rundir, paste(runname, "_properties_allSys.csv", sep = "")), sep=",", header=T)
-  
+
   ## read in selectedSystems
   selectedSystems <- read.csv(file.path(rundir, paste(runname, "_selectedSys.csv", sep = "")), sep=",", header=T)
   
@@ -37,16 +49,25 @@ rundir<-file.path("../Santiago-runfolder/output", runname)
   tas_components_df <- dcast(melted_tas_comp, tech ~ attribute)
   remove(tas_components_list, melted_tas_comp)
   
-  ## Merge TAS and TAS Components
-  tas_components_df <- merge(tas_components_df, tas_df, by.x = "tech", by.y = 0)
-  
-  #create long data frame
-  tas_components_df_long = melt(tas_components_df, id=c("tech", "FG"))
-  
+  if (analysisperzone){
+    ## add column "zone"
+    tas_components_df$zone <-zonename
+    ## Merge TAS and TAS Components
+    tas_components_df <- merge(tas_components_df, tas_df, by.x = "tech", by.y = 0)
+    #create long data frame
+    tas_components_df_long = melt(tas_components_df, id=c("tech", "FG", "zone"))
+    ## add column "zone"
+    props$zone <-zonename
+  } else {
+    ## Merge TAS and TAS Components
+    tas_components_df <- merge(tas_components_df, tas_df, by.x = "tech", by.y = 0)
+    #create long data frame
+    tas_components_df_long = melt(tas_components_df, id=c("tech", "FG"))
+    }
+  end
   
 ## add column "selected" with boolean expression checking if system is in selectedSystems
 props$selected <- props$ID %in% selectedSystems$ID
-
 
 ## factor sources for setting order
 props$source <- factor(props$source, levels=str_sort(unique(props$source), numeric = TRUE))
@@ -60,13 +81,7 @@ for(i in levels(props$template)){
 }
 
 ## make templates short names
-temp_nb=c("ST1","ST2","ST3", "ST4", "ST5","ST6","ST9","ST10","ST11", "ST12","ST13","ST14","ST15", "ST16","ST17","ST18","ST19")
-props$template_nb <- props$template
-for(i in 1:17){
-  levels(props$template_nb)[levels(props$template_nb2)==template_c2[i]] <- temp_nb[i]
-}
-props$template_nb <- factor(props$template_nb,levels=temp_nb)
-
+props$template_nb <- gsub(". .*$","",props$template)
 
 ## add number of SanSys within a each template
 n_in_template=NULL
@@ -113,4 +128,10 @@ props$lost_water_water.loss_sd <- props$lost_water_water.loss_sd/1000
 saveRDS(props, file=(file.path(rundir, paste(runname, "props.Rdata", sep = "_"))))
 saveRDS(tas_components_df, file=(file.path(rundir, paste(runname, "tas_props.Rdata", sep = "_"))))
 saveRDS(tas_components_df_long, file=(file.path(rundir, paste(runname, "tas_long_props.Rdata", sep = "_"))))
+
+if (analysisperzone){
+  saveRDS(props, file=(file.path(zonedir, paste(runname, zonename, "prop.Rdata", sep = "_"))))
+  saveRDS(tas_components_df, file=(file.path(zonedir, paste(runname, zonename, "tas_props.Rdata", sep = "_"))))
+  saveRDS(tas_components_df_long, file=(file.path(zonedir, paste(runname, zonename, "tas_long_props.Rdata", sep = "_"))))}
+end 
 
